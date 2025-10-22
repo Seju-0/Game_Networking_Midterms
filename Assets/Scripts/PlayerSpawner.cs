@@ -1,5 +1,6 @@
 using Fusion;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class PlayerSpawner : SimulationBehaviour, IPlayerJoined
 {
@@ -9,7 +10,7 @@ public class PlayerSpawner : SimulationBehaviour, IPlayerJoined
     {
         if(Runner.LocalPlayer == player)
         {
-            Runner.Spawn(PlayerPrefab, new Vector3(0, 1, -5), Quaternion.identity);
+            Runner.Spawn(PlayerPrefab, new Vector3(0, 5, 0), Quaternion.identity);
         }
     }
 }
