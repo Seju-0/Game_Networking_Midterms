@@ -1,41 +1,49 @@
 using Fusion;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(NetworkObject))]
 public class PlayerMovement : NetworkBehaviour
 {
-    [SerializeField] private Rigidbody rb;   // Rigidbody for physics-based movement
-    public float playerSpeed = 5f;           // Speed of the player
+    [Header("Movement")]
+    public float moveSpeed = 6f;
+    public float rotationSpeed = 10f;
+
+    private Rigidbody rb;
+    private Vector3 inputVector;
+
+    public override void Spawned()
+    {
+        rb = GetComponent<Rigidbody>();
+
+        rb.useGravity = false;
+        rb.isKinematic = false;
+        rb.interpolation = RigidbodyInterpolation.None; // Fusion handles interpolation
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+    }
 
     public override void FixedUpdateNetwork()
     {
-        if (!HasStateAuthority) return;  // Ensure only the local player controls their own movement
+        if (!HasStateAuthority)
+            return;
 
-        // Get player input
-        float h = Input.GetAxis("Horizontal");
-        float v = Input.GetAxis("Vertical");
+        // --- Input ---
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
 
-        // Calculate movement direction
-        Vector3 move = new Vector3(h, 0, v) * playerSpeed * Runner.DeltaTime;
+        inputVector = new Vector3(h, 0f, v).normalized;
 
-        // Apply movement to Rigidbody
-        rb.MovePosition(rb.position + move);
+        // --- Movement ---
+        Vector3 move = inputVector * moveSpeed * Runner.DeltaTime;
+        rb.position += move;
 
-        // Update player rotation to face the direction of movement
-        if (move != Vector3.zero)
+        // --- Rotation ---
+        if (inputVector != Vector3.zero)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(move);
-            rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, Time.deltaTime * 10f));  // Smooth rotation
-        }
-    }
-
-    private void Start()
-    {
-        if (rb == null)
-        {
-            rb = GetComponent<Rigidbody>();  // Get Rigidbody component if not set in the inspector
+            Quaternion targetRot = Quaternion.LookRotation(inputVector, Vector3.up);
+            rb.rotation = Quaternion.Slerp(rb.rotation, targetRot, rotationSpeed * Runner.DeltaTime);
         }
 
-        // Disable gravity if you're manually handling gravity (optional)
-        rb.useGravity = true;
+        if (!HasStateAuthority) return;
     }
 }

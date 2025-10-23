@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 8386859324920614659}
   - component: {fileID: 4098740741426627270}
   - component: {fileID: 3132171972801335146}
-  - component: {fileID: 4873335806243199576}
   - component: {fileID: 1449779711763923521}
   - component: {fileID: 4406688948276734502}
   - component: {fileID: 4676503576081787018}
@@ -116,31 +115,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!143 &4873335806243199576
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 91500753988595207}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 0
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &1449779711763923521
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -155,7 +129,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   SortKey: 3647972803
   ObjectInterest: 1
-  Flags: 262145
+  Flags: 786433
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 4406688948276734502}
@@ -190,8 +164,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 32b9c79e9dc1ea94795c63f62232580c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ch: {fileID: 4873335806243199576}
-  playerSpeed: 10
+  moveSpeed: 10
+  rotationSpeed: 10
 --- !u!114 &5432281017723140753
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -226,8 +200,8 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 90
   m_CollisionDetection: 0
