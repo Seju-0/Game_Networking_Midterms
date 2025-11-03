@@ -4,11 +4,13 @@ using System;
 
 public class PlayerStats : MonoBehaviour
 {
+    [Header("Text Fields")]
     public TMP_Text usernameText;
     public TMP_Text winsText;
     public TMP_Text lossesText;
     public TMP_Text winRateText;
     public TMP_Text lastLoginText;
+    public TMP_Text creationDateText;  //  added this
 
     private UserData currentUser;
 
@@ -21,7 +23,6 @@ public class PlayerStats : MonoBehaviour
             return;
         }
 
-        // Load the user's JSON from PlayerPrefs
         string json = PlayerPrefs.GetString(username + "_Data", "");
         if (string.IsNullOrEmpty(json))
         {
@@ -30,20 +31,46 @@ public class PlayerStats : MonoBehaviour
         }
 
         currentUser = JsonUtility.FromJson<UserData>(json);
+        DisplayUserData();
+        InvokeRepeating(nameof(RefreshStatsFromPrefs), 5f, 5f);
 
-        // Display data
+    }
+
+    public void RefreshStatsFromPrefs()
+    {
+        string username = PlayerPrefs.GetString("CurrentUser", "");
+        if (string.IsNullOrEmpty(username)) return;
+
+        string json = PlayerPrefs.GetString(username + "_Data", "");
+        if (string.IsNullOrEmpty(json)) return;
+
+        currentUser = JsonUtility.FromJson<UserData>(json);
+        DisplayUserData();
+    }
+
+
+    void DisplayUserData()
+    {
+        if (currentUser == null) return;
+
         usernameText.text = currentUser.Username;
         winsText.text = $"Wins: {currentUser.Wins}";
         lossesText.text = $"Losses: {currentUser.Losses}";
-        winRateText.text = $"Win Rate: {GetWinRate(currentUser):0.0}%";
 
-        // Parse & show how long ago they last logged in
+        //  Compute win rate dynamically
+        float rate = GetWinRate(currentUser);
+        winRateText.text = $"Win Rate: {rate:0.0}%";
+
+        //  Account creation date
+        creationDateText.text = $"Created: {currentUser.AccountCreationDate}";
+
+        //  Last login time difference
         if (!string.IsNullOrEmpty(currentUser.LastLoggedIn))
         {
             DateTime lastLogin = DateTime.Parse(currentUser.LastLoggedIn);
             TimeSpan diff = DateTime.Now - lastLogin;
-            string ago = "";
 
+            string ago = "";
             if (diff.TotalDays >= 1)
                 ago = $"{Mathf.FloorToInt((float)diff.TotalDays)} days ago";
             else if (diff.TotalHours >= 1)

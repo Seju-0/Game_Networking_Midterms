@@ -136,6 +136,7 @@ public class LoginManager : MonoBehaviour
         {
             users.Remove(username);
             PlayerPrefs.DeleteKey(username + "_Data");
+            PlayerPrefsUtility.RemoveUserKey(username + "_Data");
             PlayerPrefs.Save();
             Debug.Log($"{username} account deleted.");
         }
@@ -155,6 +156,7 @@ public class LoginManager : MonoBehaviour
     {
         string json = JsonUtility.ToJson(user);
         PlayerPrefs.SetString(user.Username + "_Data", json);
+        PlayerPrefsUtility.AddUserKey(user.Username + "_Data");
         PlayerPrefs.Save();
     }
 

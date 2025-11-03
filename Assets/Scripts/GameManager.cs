@@ -1,7 +1,8 @@
-﻿using System.Collections;
+﻿using Fusion;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using Fusion;
 using TMPro;
 using UnityEngine;
 
@@ -213,6 +214,37 @@ public class GameManager : NetworkBehaviour
             resultText.StartCoroutine(PopOutResult(resultText));
         }
 
+        // 🟢 Update local player stats in PlayerPrefs
+        if (localIndex != -1)
+        {
+            string username = PlayerPrefs.GetString("CurrentUser", "");
+            if (!string.IsNullOrEmpty(username) && PlayerPrefs.HasKey(username + "_Data"))
+            {
+                string json = PlayerPrefs.GetString(username + "_Data");
+                UserData data = JsonUtility.FromJson<UserData>(json);
+
+                if (localIndex == winnerIndex)
+                    data.Wins++;
+                else
+                    data.Losses++;
+
+                data.LastLoggedIn = DateTime.Now.ToString();
+
+                string updated = JsonUtility.ToJson(data);
+                PlayerPrefs.SetString(username + "_Data", updated);
+                PlayerPrefs.Save();
+
+                Debug.Log($"{username} now has {data.Wins} wins and {data.Losses} losses");
+
+                //  Auto-refresh PlayerStats UI if it's active
+                var stats = UnityEngine.Object.FindFirstObjectByType<PlayerStats>();
+                if (stats != null)
+                {
+                    stats.RefreshStatsFromPrefs();
+                }
+            }
+        }
+
         // Show restart button only for host, now that results are out
         if (restartButton)
             restartButton.SetActive(Object.HasStateAuthority);
@@ -316,13 +348,11 @@ public class GameManager : NetworkBehaviour
                 foreach (var m in rend.materials)
                 {
                     if (m == null) continue;
-                    // Reset to white or any base color you want
                     if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
                     if (m.HasProperty("_Color")) m.SetColor("_Color", Color.white);
                 }
             }
 
-            // Reset claim flag
             npc.SetHasChangedColor(false);
         }
 
