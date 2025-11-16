@@ -8,6 +8,14 @@ using UnityEngine;
 
 public class GameManager : NetworkBehaviour
 {
+    [Header("Profile UI")]
+    public TextMeshProUGUI profileUsernameText;
+    public TextMeshProUGUI profileEmailText;
+    public TextMeshProUGUI profileWinsText;
+    public TextMeshProUGUI profileLossesText;
+    public TextMeshProUGUI profileMessageText;
+
+
     [Header("Match Settings")]
     [Tooltip("Round length in seconds")]
     public float matchDuration = 60f;
@@ -214,29 +222,34 @@ public class GameManager : NetworkBehaviour
             resultText.StartCoroutine(PopOutResult(resultText));
         }
 
-        // 🟢 Update local player stats in PlayerPrefs
+        // 🟢 Update local player stats using API (PUT /api/player)
         if (localIndex != -1)
         {
-            string username = PlayerPrefs.GetString("CurrentUser", "");
-            if (!string.IsNullOrEmpty(username) && PlayerPrefs.HasKey(username + "_Data"))
+            var getRes = PlayerApi.Instance.GetPlayer();   // GET /api/player
+
+            if (getRes.success)
             {
-                string json = PlayerPrefs.GetString(username + "_Data");
-                UserData data = JsonUtility.FromJson<UserData>(json);
+                var user = getRes.data;
+
+                int wins = user.Wins;
+                int losses = user.Losses;
 
                 if (localIndex == winnerIndex)
-                    data.Wins++;
+                    wins++;
                 else
-                    data.Losses++;
+                    losses++;
 
-                data.LastLoggedIn = DateTime.Now.ToString();
+                var updateReq = new PlayerApi.UpdatePlayerRequest
+                {
+                    username = user.Username,
+                    wins = wins,
+                    losses = losses
+                };
 
-                string updated = JsonUtility.ToJson(data);
-                PlayerPrefs.SetString(username + "_Data", updated);
-                PlayerPrefs.Save();
+                var updRes = PlayerApi.Instance.UpdatePlayer(updateReq);  // PUT /api/player
+                Debug.Log($"API update: {updRes.message}");
 
-                Debug.Log($"{username} now has {data.Wins} wins and {data.Losses} losses");
-
-                //  Auto-refresh PlayerStats UI if it's active
+                // Auto-refresh PlayerStats UI if it's active
                 var stats = UnityEngine.Object.FindFirstObjectByType<PlayerStats>();
                 if (stats != null)
                 {
@@ -244,6 +257,7 @@ public class GameManager : NetworkBehaviour
                 }
             }
         }
+
 
         // Show restart button only for host, now that results are out
         if (restartButton)
@@ -362,5 +376,93 @@ public class GameManager : NetworkBehaviour
         // Hide restart button until next results
         if (restartButton)
             restartButton.SetActive(false);
+    }
+
+    // ================= PROFILE / API DEMO =================
+
+    public void ShowProfile()
+    {
+        if (profileMessageText != null)
+            profileMessageText.text = "";
+
+        var res = PlayerApi.Instance.GetPlayer();   // GET /api/player
+
+        if (!res.success)
+        {
+            if (profileMessageText != null)
+                profileMessageText.text = res.message;
+
+            if (profileUsernameText != null) profileUsernameText.text = "-";
+            if (profileEmailText != null) profileEmailText.text = "-";
+            if (profileWinsText != null) profileWinsText.text = "0";
+            if (profileLossesText != null) profileLossesText.text = "0";
+            return;
+        }
+
+        var user = res.data;
+
+        if (profileUsernameText != null) profileUsernameText.text = user.Username;
+        if (profileEmailText != null) profileEmailText.text = user.Email;
+        if (profileWinsText != null) profileWinsText.text = user.Wins.ToString();
+        if (profileLossesText != null) profileLossesText.text = user.Losses.ToString();
+
+        if (profileMessageText != null)
+            profileMessageText.text = "Profile loaded.";
+    }
+
+    // Adds +1 win using PUT /api/player
+    public void AddWinForCurrentUser()
+    {
+        var getRes = PlayerApi.Instance.GetPlayer();
+        if (!getRes.success)
+        {
+            if (profileMessageText != null)
+                profileMessageText.text = getRes.message;
+            return;
+        }
+
+        var user = getRes.data;
+
+        var updateReq = new PlayerApi.UpdatePlayerRequest
+        {
+            username = user.Username, // or "" to use CurrentUser
+            wins = user.Wins + 1,
+            losses = user.Losses
+        };
+
+        var updateRes = PlayerApi.Instance.UpdatePlayer(updateReq); // PUT /api/player
+
+        if (profileMessageText != null)
+            profileMessageText.text = updateRes.message;
+
+        ShowProfile(); // refresh UI
+    }
+
+    // Optional: +1 loss
+    public void AddLossForCurrentUser()
+    {
+        var getRes = PlayerApi.Instance.GetPlayer();
+        if (!getRes.success)
+        {
+            if (profileMessageText != null)
+                profileMessageText.text = getRes.message;
+            return;
+        }
+
+        var user = getRes.data;
+
+        var updateReq = new PlayerApi.UpdatePlayerRequest
+        {
+            username = user.Username,
+            wins = user.Wins,
+            losses = user.Losses + 1
+        };
+
+        var updateRes = PlayerApi.Instance.UpdatePlayer(updateReq); // PUT /api/player
+
+        if (profileMessageText != null)
+            profileMessageText.text = updateRes.message;
+
+        ShowProfile();
     }
 }

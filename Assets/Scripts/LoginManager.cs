@@ -1,9 +1,6 @@
 using UnityEngine;
 using TMPro;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using System;
-using System.Collections.Generic;
 
 public class LoginManager : MonoBehaviour
 {
@@ -21,16 +18,13 @@ public class LoginManager : MonoBehaviour
     public TMP_InputField regRepeatPasswordInput;
     public TMP_Text registerMessage;
 
-    private Dictionary<string, UserData> users = new Dictionary<string, UserData>();
-
     private void Start()
     {
         loginPanel.SetActive(true);
         registerPanel.SetActive(false);
-        LoadAllUsers();
     }
 
-    // ===================== LOGIN =====================
+    // ===================== LOGIN (POST /api/player/login) =====================
     public void OnLoginButton()
     {
         string username = usernameInput.text;
@@ -42,49 +36,23 @@ public class LoginManager : MonoBehaviour
             return;
         }
 
-        if (!users.ContainsKey(username))
+        var req = new PlayerApi.LoginRequest
         {
-            loginMessage.text = "Account not found. Please register.";
-            return;
-        }
+            username = username,
+            password = password
+        };
 
-        UserData user = users[username];
+        var res = PlayerApi.Instance.Login(req);
+        loginMessage.text = res.message;
 
-        if (password == user.Password)
+        if (res.success)
         {
-            loginMessage.text = "Login successful!";
-            PlayerPrefs.SetString("CurrentUser", username);
-
-            // Debug last login difference
-            if (!string.IsNullOrEmpty(user.LastLoggedIn))
-            {
-                DateTime lastLogin = DateTime.Parse(user.LastLoggedIn);
-                TimeSpan diff = DateTime.Now - lastLogin;
-
-                string ago = "";
-                if (diff.TotalDays >= 1)
-                    ago = $"{Mathf.FloorToInt((float)diff.TotalDays)} days ago.";
-                else if (diff.TotalHours >= 1)
-                    ago = $"{Mathf.FloorToInt((float)diff.TotalHours)}h {diff.Minutes} minutes ago.";
-                else
-                    ago = $"{Mathf.FloorToInt((float)diff.TotalMinutes)} minutes ago.";
-
-                Debug.Log($"{username} last logged in {ago}");
-            }
-
-            // Update last login
-            user.LastLoggedIn = DateTime.Now.ToString();
-            SaveUser(user);
-
+            // Go to game scene
             SceneManager.LoadScene("GameScene");
-        }
-        else
-        {
-            loginMessage.text = "Incorrect password.";
         }
     }
 
-    // ===================== REGISTER =====================
+    // ===================== REGISTER (POST /api/player/register) =====================
     public void OnRegisterButton()
     {
         string username = regUsernameInput.text;
@@ -92,8 +60,10 @@ public class LoginManager : MonoBehaviour
         string password = regPasswordInput.text;
         string repeatPass = regRepeatPasswordInput.text;
 
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) ||
-            string.IsNullOrEmpty(password) || string.IsNullOrEmpty(repeatPass))
+        if (string.IsNullOrEmpty(username) ||
+            string.IsNullOrEmpty(email) ||
+            string.IsNullOrEmpty(password) ||
+            string.IsNullOrEmpty(repeatPass))
         {
             registerMessage.text = "Please fill in all fields.";
             return;
@@ -105,88 +75,40 @@ public class LoginManager : MonoBehaviour
             return;
         }
 
-        if (users.ContainsKey(username))
+        var req = new PlayerApi.RegisterRequest
         {
-            registerMessage.text = "Username already exists.";
+            username = username,
+            email = email,
+            password = password
+        };
+
+        var res = PlayerApi.Instance.Register(req);
+        registerMessage.text = res.message;
+
+        if (res.success)
+        {
+            // Switch back to login after short delay
+            Invoke(nameof(SwitchToLogin), 1.5f);
+        }
+    }
+
+    // ===================== DELETE (DELETE /api/delete/:playerId) =====================
+    public void OnDeleteAccountButton()
+    {
+        string currentUser = PlayerPrefs.GetString("CurrentUser", "");
+        if (string.IsNullOrEmpty(currentUser))
+        {
+            Debug.LogWarning("No current user to delete.");
             return;
         }
 
-        UserData newUser = new UserData
-        {
-            Username = username,
-            Email = email,
-            Password = password,
-            Wins = 0,
-            Losses = 0,
-            AccountCreationDate = DateTime.Now.ToString(),
-            LastLoggedIn = DateTime.Now.ToString()
-        };
+        var res = PlayerApi.Instance.DeletePlayer(currentUser);
+        Debug.Log(res.message);
 
-        users.Add(username, newUser);
-        SaveUser(newUser);
-
-        registerMessage.text = "Account created successfully!";
-        Invoke(nameof(SwitchToLogin), 1.5f);
-    }
-
-    // ===================== ACCOUNT DELETION =====================
-    public void DeleteAccount(string username)
-    {
-        if (users.ContainsKey(username))
-        {
-            users.Remove(username);
-            PlayerPrefs.DeleteKey(username + "_Data");
-            PlayerPrefsUtility.RemoveUserKey(username + "_Data");
-            PlayerPrefs.Save();
-            Debug.Log($"{username} account deleted.");
-        }
-        else
-        {
-            Debug.LogWarning("Account not found.");
-        }
-    }
-    public void OnDeleteAccountButton()
-    {
-        string currentUser = PlayerPrefs.GetString("CurrentUser");
-        DeleteAccount(currentUser);
-    }
-
-    // ===================== JSON SAVE/LOAD =====================
-    private void SaveUser(UserData user)
-    {
-        string json = JsonUtility.ToJson(user);
-        PlayerPrefs.SetString(user.Username + "_Data", json);
-        PlayerPrefsUtility.AddUserKey(user.Username + "_Data");
-        PlayerPrefs.Save();
-    }
-
-    private void LoadAllUsers()
-    {
-        users.Clear();
-        foreach (string key in PlayerPrefsKeys())
-        {
-            if (key.EndsWith("_Data"))
-            {
-                string json = PlayerPrefs.GetString(key);
-                UserData user = JsonUtility.FromJson<UserData>(json);
-                users[user.Username] = user;
-            }
-        }
-    }
-    public float GetWinRate(UserData user)
-    {
-        int totalGames = user.Wins + user.Losses;
-        return totalGames == 0 ? 0 : (float)user.Wins / totalGames * 100f;
-    }
-
-    private List<string> PlayerPrefsKeys()
-    {
-        // Unity doesn’t provide PlayerPrefs.GetAllKeys(), so we track keys manually if needed.
-        // For simplicity, we assume keys end with "_Data"
-        List<string> keys = new List<string>();
-        foreach (string key in PlayerPrefsUtility.GetAllKeys())
-            keys.Add(key);
-        return keys;
+        // Optional: go back to login screen or reset UI
+        usernameInput.text = "";
+        passwordInput.text = "";
+        loginMessage.text = "Account deleted.";
     }
 
     // ===================== PANEL SWITCHES =====================
