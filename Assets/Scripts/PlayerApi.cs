@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -73,6 +73,7 @@ public class PlayerApi : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
+            SaveDatabase();
             Destroy(gameObject);
             return;
         }
@@ -95,11 +96,14 @@ public class PlayerApi : MonoBehaviour
             return new ApiResponse<UserData>(false, "All fields are required.");
         }
 
+        // ✔ SAME LOGIC YOU REQUESTED
+        // username already exists
         if (users.ContainsKey(req.username))
         {
             return new ApiResponse<UserData>(false, "Username already exists.");
         }
 
+        // create new player (same as your code)
         UserData newUser = new UserData
         {
             Username = req.username,
@@ -111,11 +115,11 @@ public class PlayerApi : MonoBehaviour
             LastLoggedIn = DateTime.Now.ToString()
         };
 
-        users[req.username] = newUser;
+        users[req.username] = newUser;   // Add to database  
         SaveUserToPlayerPrefs(newUser);
         SaveDatabase();
 
-        // Set current user
+        // Set current user so your UI knows who logged in
         PlayerPrefs.SetString("CurrentUser", newUser.Username);
         PlayerPrefs.Save();
 
@@ -231,7 +235,11 @@ public class PlayerApi : MonoBehaviour
         users.Clear();
 
         if (!File.Exists(dbPath))
+        {
+            // Create empty DB file
+            File.WriteAllText(dbPath, JsonUtility.ToJson(new UserListWrapper(), true));
             return;
+        }
 
         string json = File.ReadAllText(dbPath);
         if (string.IsNullOrEmpty(json))
@@ -247,6 +255,7 @@ public class PlayerApi : MonoBehaviour
             }
         }
     }
+
 
     private void SaveDatabase()
     {

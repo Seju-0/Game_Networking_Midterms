@@ -24,7 +24,9 @@ public class LoginManager : MonoBehaviour
         registerPanel.SetActive(false);
     }
 
-    // ===================== LOGIN (POST /api/player/login) =====================
+    // -------------------------
+    // LOGIN FUNCTION
+    // -------------------------
     public void OnLoginButton()
     {
         string username = usernameInput.text;
@@ -47,12 +49,17 @@ public class LoginManager : MonoBehaviour
 
         if (res.success)
         {
-            // Go to game scene
+            // Save the logged-in user
+            PlayerPrefs.SetString("CurrentUser", username);
+
+            // Load next scene
             SceneManager.LoadScene("GameScene");
         }
     }
 
-    // ===================== REGISTER (POST /api/player/register) =====================
+    // -------------------------
+    // REGISTER FUNCTION
+    // -------------------------
     public void OnRegisterButton()
     {
         string username = regUsernameInput.text;
@@ -85,33 +92,47 @@ public class LoginManager : MonoBehaviour
         var res = PlayerApi.Instance.Register(req);
         registerMessage.text = res.message;
 
+        // If registered successfully, switch back to login screen
         if (res.success)
         {
-            // Switch back to login after short delay
             Invoke(nameof(SwitchToLogin), 1.5f);
         }
     }
 
-    // ===================== DELETE (DELETE /api/delete/:playerId) =====================
+    // -------------------------
+    // DELETE ACCOUNT FUNCTION
+    // -------------------------
     public void OnDeleteAccountButton()
     {
         string currentUser = PlayerPrefs.GetString("CurrentUser", "");
+
         if (string.IsNullOrEmpty(currentUser))
         {
-            Debug.LogWarning("No current user to delete.");
+            Debug.LogWarning("No current user saved in PlayerPrefs.");
+            loginMessage.text = "No account logged in.";
             return;
         }
 
+        // Call the delete API
         var res = PlayerApi.Instance.DeletePlayer(currentUser);
-        Debug.Log(res.message);
+        loginMessage.text = res.message;
 
-        // Optional: go back to login screen or reset UI
-        usernameInput.text = "";
-        passwordInput.text = "";
-        loginMessage.text = "Account deleted.";
+        if (res.success)
+        {
+            // Clear PlayerPrefs
+            PlayerPrefs.DeleteKey("CurrentUser");
+
+            // Reset UI
+            usernameInput.text = "";
+            passwordInput.text = "";
+
+            loginMessage.text = "Account deleted.";
+        }
     }
 
-    // ===================== PANEL SWITCHES =====================
+    // -------------------------
+    // UI SWITCHES
+    // -------------------------
     public void SwitchToRegister()
     {
         loginPanel.SetActive(false);
